@@ -397,7 +397,10 @@ class MakeJson():
                 try:
                     maneuverLabel = pd.read_excel(maneuverFile, sheet_name = 'Label')
                 except:
-                    maneuverLabel = pd.read_excel(maneuverFile)
+                    try:
+                        maneuverLabel = pd.read_excel(maneuverFile)
+                    except:
+                        continue
                 label = maneuverLabel
 
                 # sceneryRoadLabel = label.iloc[:,6:8].query('RoadFrameIndex >= 0')
