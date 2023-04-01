@@ -8,6 +8,7 @@ v0.1 정영훈 012523
 v0.2 김승환 022023 - CN7 json 생성 코드 수정
 v0.2 정영훈 032323 - AUTOCURATION문제 수정
 파일의 경로를 입력하고 AUTOCURATION ,GTCURATION ,RAWMODE의 모드를 선택하면 해당하는 json 파일이 생성됨
+v0.3 CN7 을 h5py 로 읽어와서 속도 개선, registration 에서 wrong 파일 읽어오도록 수정완료
 
 '''
 
@@ -32,9 +33,9 @@ import h5py
 from datetime import datetime 
 
 ################################ 수정 필요 ################################
-AUTOCURATION = True # ANNOTATION 단계에서 사용하는 토글
+AUTOCURATION = False # ANNOTATION 단계에서 사용하는 토글
 GTCURATION = False # ANNOTATION 단계에서 사용하는 토글
-RAWMODE = False # Registration 단계에서 사용하는 토글
+RAWMODE = True # Registration 단계에서 사용하는 토글
 # 현재 RAWMODE에 대해서만 CN7 작업 끝남. auto, gt 진행 예정
 # matDirList = [r'\\192.168.75.251\Shares\FOT_Genesis Data_1\mat\RG3_030323',r'\\192.168.75.251\Shares\FOT_Genesis Data_1\mat\RG3_030423']
 matDirList = [r'\\192.168.75.251\Shares\FOT_Avante Data_1\Rosbag2Mat\CN7_030423']
@@ -133,10 +134,13 @@ class MakeJson():
                 FRAMESIZE,CHASSIS_STATUS = self.GetVehicleFrameSize(self.type, mat)
                 try:
                     registrationFileRoad = pd.read_excel(self.rgDir +r'\Raw\Registration_' + self.type + r'_' + self.date + r'.xlsx',sheet_name = "road")
-                    registrationFileWrong = pd.read_excel(self.rgDir +r'\Raw\Registration_' + self.type + r'_' + self.date + r'.xlsx',sheet_name = "road")
+                    registrationFileWrong = pd.read_excel(self.rgDir +r'\Raw\Registration_' + self.type + r'_' + self.date + r'.xlsx',sheet_name = "wrong")
                 except:
                     raise Exception("Registration.xlsx가 없습니다.")
                 
+                for tmpidx in range(registrationFileWrong.shape[0]):
+                    if fnum == registrationFileWrong['dataNum'].iloc[tmpidx]:
+                        CSS_STATUS = registrationFileWrong['Description'].iloc[tmpidx]
                 
                 adminDirectoryRaw = self.rosbagDir + '\\' + rawDataName
                 adminDirectoryExported = self.matDir + '\\' + matName
@@ -241,7 +245,7 @@ class MakeJson():
 
                 ### Generate CSS ###
 
-                CSS_STATUS = self.CheckCSSStatus(GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS)
+                CSS_STATUS = self.CheckCSSStatus(GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS,CSS_STATUS = CSS_STATUS)
                 
                 adminStatus = CSS_STATUS
                 CSS_STATUS = []        
@@ -324,13 +328,19 @@ class MakeJson():
                 if self.type == "CN7":
                     mat = mat73.loadmat(matList[num])
                     mat = h5py.File(matList[num])
-                GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS = self.CheckData(self.type,GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS,mat)        
+                # GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS = self.CheckData(self.type,GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS,mat)        
                 FRAMESIZE,CHASSIS_STATUS = self.GetVehicleFrameSize(self.type, mat)
                 try:
                     registrationFileRoad = pd.read_excel(self.rgDir +r'\Raw\Registration_' + self.type + r'_' + self.date + r'.xlsx',sheet_name = "road")
                     registrationFileWrong = pd.read_excel(self.rgDir +r'\Raw\Registration_' + self.type + r'_' + self.date + r'.xlsx',sheet_name = "road")
                 except:
                     raise Exception("Registration.xlsx가 없습니다.")
+                
+                for tmpidx in range(registrationFileWrong.shape[0]):
+                    if fnum == registrationFileWrong['dataNum'].iloc[tmpidx]:
+                        CSS_STATUS = registrationFileWrong['Description'].iloc[tmpidx]
+    
+                    
                 adminDirectoryRaw = rawDataDir + '\\' + rawDataName
                 adminDirectoryExported = self.matDir + '\\' + matName
                 adminDirectoryRegistration = self.rgDir + '\\Raw\\Registration_' + self.type + '_' + self.date +'.xlsx' 
@@ -547,7 +557,7 @@ class MakeJson():
 
                 ### Generate CSS ###
 
-                CSS_STATUS = self.CheckCSSStatus(GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS)
+                CSS_STATUS = self.CheckCSSStatus(GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS,CSS_STATUS = CSS_STATUS)
                 adminStatus = CSS_STATUS
                 CSS_STATUS = []        
                 
@@ -627,13 +637,18 @@ class MakeJson():
                     mat = scipy.io.loadmat(matList[num])
                 if self.type == "CN7":
                     mat = mat73.loadmat(matList[num])
-                GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS = self.CheckData(self.type,GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS,mat)        
+                # GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS = self.CheckData(self.type,GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS,mat)        
                 FRAMESIZE,CHASSIS_STATUS = self.GetVehicleFrameSize(self.type, mat)
                 try:
                     registrationFileRoad = pd.read_excel(self.rgDir +r'\Raw\Registration_' + self.type + r'_' + self.date + r'.xlsx',sheet_name = "road")
                     registrationFileWrong = pd.read_excel(self.rgDir +r'\Raw\Registration_' + self.type + r'_' + self.date + r'.xlsx',sheet_name = "road")
                 except:
                     raise Exception("Registration.xlsx가 없습니다.")
+                
+                for tmpidx in range(registrationFileWrong.shape[0]):
+                    if fnum == registrationFileWrong['dataNum'].iloc[tmpidx]:
+                        CSS_STATUS = registrationFileWrong['Description'].iloc[tmpidx]
+                                        
                 adminDirectoryRaw = rawDataDir + '\\' + rawDataName
                 adminDirectoryExported = self.matDir + '\\' + matName
                 time = datetime.fromtimestamp(os.path.getctime(adminDirectoryRaw)).strftime('%Y-%m-%d %H:%M:%S')[-8:]  
@@ -847,7 +862,7 @@ class MakeJson():
 
                 ### Generate CSS ###
 
-                CSS_STATUS = self.CheckCSSStatus(GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS)
+                CSS_STATUS = self.CheckCSSStatus(GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS,CSS_STATUS = CSS_STATUS)
                 adminStatus = CSS_STATUS
                 CSS_STATUS = []        
                 
@@ -1306,8 +1321,8 @@ class MakeJson():
         
         return CSS
 
-    def CheckCSSStatus(self, GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS):
-        CSS_STATUS =[]
+    def CheckCSSStatus(self, GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS,CSS_STATUS = []):
+        # CSS_STATUS =[]
         if GPS_STATUS:
             GPS_STATUS = 1
             CSS_STATUS.append(GPS_STATUS)
