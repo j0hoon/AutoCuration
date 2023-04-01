@@ -28,6 +28,7 @@ import natsort
 from tqdm import tqdm
 # SELECT MODE
 import mat73
+import h5py
 from datetime import datetime 
 
 ################################ 수정 필요 ################################
@@ -36,7 +37,7 @@ GTCURATION = False # ANNOTATION 단계에서 사용하는 토글
 RAWMODE = False # Registration 단계에서 사용하는 토글
 # 현재 RAWMODE에 대해서만 CN7 작업 끝남. auto, gt 진행 예정
 # matDirList = [r'\\192.168.75.251\Shares\FOT_Genesis Data_1\mat\RG3_030323',r'\\192.168.75.251\Shares\FOT_Genesis Data_1\mat\RG3_030423']
-matDirList = [r'\\192.168.75.251\Shares\FOT_Genesis Data_1\mat\RG3_030423']
+matDirList = [r'\\192.168.75.251\Shares\FOT_Avante Data_1\Rosbag2Mat\CN7_030423']
 # matDir = r'\\192.168.75.251\Shares\FOT_Genesis Data_1\mat\RG3_030223'
 
 # 121번 라인 숫자 수정
@@ -127,14 +128,16 @@ class MakeJson():
                 if self.type == "RG3":
                     mat = scipy.io.loadmat(matList[num])
                 if self.type == "CN7":
-                    mat = mat73.loadmat(matList[num])
-                GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS = self.CheckData(self.type,GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS,mat)        
+                    # mat = mat73.loadmat(matList[num])
+                    mat = h5py.File(matList[num])
                 FRAMESIZE,CHASSIS_STATUS = self.GetVehicleFrameSize(self.type, mat)
                 try:
                     registrationFileRoad = pd.read_excel(self.rgDir +r'\Raw\Registration_' + self.type + r'_' + self.date + r'.xlsx',sheet_name = "road")
                     registrationFileWrong = pd.read_excel(self.rgDir +r'\Raw\Registration_' + self.type + r'_' + self.date + r'.xlsx',sheet_name = "road")
                 except:
                     raise Exception("Registration.xlsx가 없습니다.")
+                
+                
                 adminDirectoryRaw = self.rosbagDir + '\\' + rawDataName
                 adminDirectoryExported = self.matDir + '\\' + matName
                 adminDirectoryRegistration = self.rgDir + '\\Raw\\Registration_' + self.type + "_" +self.date +".xlsx"
@@ -171,10 +174,7 @@ class MakeJson():
 
                 lane_width, curvature,MOBILEYE_STATUS = self.GetLaneInfo(self.type,mat)
                 if np.size(lane_width) == 0 or np.size(curvature) == 0:
-                    # sceneryLaneWidthMax = float(0.0)
-                    # sceneryLaneWidthMin = float(0.0)
-                    # sceneryCurvatureMax = float(0.0)
-                    # sceneryCurvaturemin = float(0.0)
+
                     sceneryLaneWidthMax = "0"
                     sceneryLaneWidthMin = "0"
                     sceneryCurvatureMax = "0"
@@ -185,20 +185,9 @@ class MakeJson():
                     sceneryCurvatureMax = str(round(np.max(curvature),8))
                     sceneryCurvaturemin = str(round(np.min(curvature),8))
 
-                # curveFlag, curveFlagSize = self.CalculateCurveEvent(self.type,matSf)
                 sceneryEvent = []
-                # sceneryEvent = pd.DataFrame(columns=['frameIndex', 'roadGeometry'])
-                # sceneryEvent = get_scenery_event(curveFlag , sceneryEvent)
                 sceneryRoadName = self.GetRoadName(registrationFileRoad,num)
-                # maneuverFile = self.manDir + '\\' + "Maneuver_" + self.type + '_' +self.date + '_' +fnum + '.xlsx'
-                # maneuverFile = os.getcwd() + '\\Maneuver_RG3_041322_001.xlsx'
-                # maneuverLabel = pd.read_excel(maneuverFile, sheet_name = 'Label')
-                # label = maneuverLabel
-
-                # sceneryRoadLabel = label.iloc[:,6:8].query('RoadFrameIndex >= 0')
-                # sceneryRoadLabelNum =  sceneryRoadLabel.shape[0]   
-
-
+  
                 illumination = int(time[:2])
                 if (illumination >= 6 and illumination < 18):
                     illumination = "Day"
@@ -210,26 +199,7 @@ class MakeJson():
 
                 dynamicInitEgoVelocity = "0"
                 dynamicInitRelVelX = "0"
-                # maneuverLabelDynamic = label.iloc[:,0:5]    
-                # indexSize = maneuverLabelDynamic.dropna().shape[0]
-                # columnSize = maneuverLabelDynamic.dropna().shape[1]
-                # initCount = int(np.size(maneuverLabelDynamic.query('FrameIndex == 1'))/columnSize)
-
-                # tmpEgoVelocity = 0
-                # tmpRelvelX = 0
-                # last_frameIndex = int(label['FrameIndex'].iloc[indexSize-1])
                 longitudinalActionVelocity = "0"
-
-
-                # for frameIndex in range(indexSize):
-                #     frameNum = int(label['FrameIndex'].iloc[frameIndex]) -1 ## python 은 -1 되어서 사용해야 하므로 전처리
-
-                #     tmpEgoVelocity = (float(matSf['SF_PP']['In_Vehicle_Sensor_sim'][0,0][frameNum , 6]) + float(matSf['SF_PP']['In_Vehicle_Sensor_sim'][0,0][frameNum , 7]))/2
-                #     for trackIdx in range(self.TRACKNUM):
-                #         if int(matSf['SF_PP']['Fusion_Track_Maneuver'][0,0][self.FT_ID,trackIdx,frameNum]) == int(label['ID'].iloc[0]):  # int(label['ID'].iloc[0]) 을 하는이유 Ego 의 아이디와 비교해서 확인해야 하기 때문에
-                #             tmpRelvelX = matSf['SF_PP']['Fusion_Track_Maneuver'][0,0][self.FT_RELX,trackIdx,frameNum]
-                #     longitudinalActionVelocity[frameIndex] =float(tmpEgoVelocity + tmpRelvelX)
-                
                 longitudinalActionAcceleration=" "
                 lateralActionAcceleration=" "
                 lateralActionVelocity=" "     
@@ -254,31 +224,12 @@ class MakeJson():
                     "numInitLane":numInitLane,
                     "numMaxLane":numMaxLane
                 }
-                
-       
-                # if mode == AUTOCALCULATIONMODE :
-                #     for i in range(curveFlagSize):
-                #         scenery['event'].append({"frameIndex":int(sceneryEvent['frameIndex'].iloc[i]),"roadGeometry":sceneryEvent['roadGeometry'].iloc[i]})
-                # elif mode == ANNOTATIONMODE  :
-                #     for i in range(sceneryRoadLabelNum):
-                #         scenery['event'].append({"frameIndex":int(sceneryRoadLabel['RoadFrameIndex'].iloc[i]),"roadGeometry":sceneryRoadLabel['roadGeometry'].iloc[i]})
-            
-                # #이하 기능은 annotation이 2줄 이상 있을시에는 annotation을 이용하고 그 외에는 자동으로 생성하는 것을 사용하는 기능입니다. 
-                # elif mode == MIXMODE  :
-                #     if sceneryRoadLabelNum == 1:
-                #         for i in range(curveFlagSize):
-                #             scenery['event'].append({"frameIndex":int(sceneryEvent['frameIndex'].iloc[i]),"roadGeometry":sceneryEvent['roadGeometry'].iloc[i]})
-                #     else :
-                #         for i in range(sceneryRoadLabelNum):
-                #             scenery['event'].append({"frameIndex":int(sceneryRoadLabel['RoadFrameIndex'].iloc[i]),"roadGeometry":sceneryRoadLabel['roadGeometry'].iloc[i]})
-                # else :
-                #     print("select correct mode!!")     
+
        
                 environment = {
                         environmentIllumination[0]:environmentIllumination[1],
                         environmentWeather[0]:environmentWeather[1]
                 }        
-
 
                 dynamic = {
                     "source":"Auto",#            "source":"Manual",
@@ -287,72 +238,11 @@ class MakeJson():
                         "event":[]
                     }
                 }          
-                
-                # dynamic_init_action_ego = { # for init 
-                #     "longitudinalAction":{     
-                #         "velocity":float(longitudinalActionVelocity[0]), # ego 의 차속
-                #         "acceleration":longitudinalActionAcceleration
-                #                     },
-                #     "lateralAction":{
-                #         "acceleration":lateralActionAcceleration,
-                #         "velocity":lateralActionVelocity
-                #     } 
-                # }
-
-                # dynamic_init_action = { # for init 이지만 ego 가 아닌 대상을 위해
-                #     "longitudinalAction":{     
-                #         "velocity":" ",
-                #         "acceleration":longitudinalActionAcceleration
-                #                     },
-                #     "lateralAction":{
-                #         "acceleration":lateralActionAcceleration,
-                #         "velocity":lateralActionVelocity
-                #     } 
-                # }  
-
-                # for i in range(initCount):
-                #     if i ==0:
-                #         dynamic['init'].append({"frameIndex":int(maneuverLabelDynamic['FrameIndex'].iloc[i]),\
-                #         "participantID":int(maneuverLabelDynamic['ID'].iloc[i]),"recognition":str(maneuverLabelDynamic['Recognition'].iloc[i])\
-                #         ,"maneuver":str(maneuverLabelDynamic['Maneuver'].iloc[i]),"category":int(maneuverLabelDynamic['Category'].iloc[i]),\
-                #         "action": dynamic_init_action_ego})
-                #     else :
-                #         dynamic['init'].append({"frameIndex":int(maneuverLabelDynamic['FrameIndex'].iloc[i]),\
-                #         "participantID":int(maneuverLabelDynamic['ID'].iloc[i]),"recognition":str(maneuverLabelDynamic['Recognition'].iloc[i])\
-                #         ,"maneuver":str(maneuverLabelDynamic['Maneuver'].iloc[i]),"category":int(maneuverLabelDynamic['Category'].iloc[i]),\
-                #         "action": dynamic_init_action})                   
-
-                # dynamic_story_startTrigger = {
-                #     "conditionName":" ",
-                #     "participantID":" "
-                # }
-
-                # for i in range(initCount , indexSize): # init 이 아닌 부분을 전부 반복문으로 실행
-                #     dynamic_event_key ={
-                #         "frameIndex":int(maneuverLabelDynamic['FrameIndex'].iloc[i]),
-                #         "startTrigger":dynamic_story_startTrigger,
-                #         "actors":{
-                #             "participantID":int(maneuverLabelDynamic['ID'].iloc[i]),
-                #             "category":int(maneuverLabelDynamic['Category'].iloc[i]),
-                #             "recognition":str(maneuverLabelDynamic['Recognition'].iloc[i]),
-                #             "maneuver":str(maneuverLabelDynamic['Maneuver'].iloc[i])
-                #         },
-                #         "action":{
-                #             "longitudinalAction":{     
-                #                 "velocity":longitudinalActionVelocity[i],
-                #                 "acceleration":longitudinalActionAcceleration
-                #                             },
-                #             "lateralAction":{
-                #                 "acceleration":lateralActionAcceleration,
-                #                 "velocity":lateralActionVelocity
-                #             }                     
-                #         }
-                #     }
-                #     dynamic['story']['event'].append(dynamic_event_key)
 
                 ### Generate CSS ###
 
                 CSS_STATUS = self.CheckCSSStatus(GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS)
+                
                 adminStatus = CSS_STATUS
                 CSS_STATUS = []        
                 
@@ -433,6 +323,7 @@ class MakeJson():
                     mat = scipy.io.loadmat(matList[num])
                 if self.type == "CN7":
                     mat = mat73.loadmat(matList[num])
+                    mat = h5py.File(matList[num])
                 GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS = self.CheckData(self.type,GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS,mat)        
                 FRAMESIZE,CHASSIS_STATUS = self.GetVehicleFrameSize(self.type, mat)
                 try:
@@ -458,16 +349,16 @@ class MakeJson():
                 adminAnnotationType = 'auto'
                 #####
                 directory = {
-                        "raw":  adminDirectoryRaw.replace("\\\\192.168.75.252","D:\\Shares"),
-                        "exported": adminDirectoryExported.replace("\\\\192.168.75.252","D:\\Shares"),
-                        "registration":adminDirectoryRegistration.replace("\\\\192.168.75.252","D:\\Shares"),
+                        "raw":  adminDirectoryRaw.replace("\\\\192.168.75.251","D:\\Shares"),
+                        "exported": adminDirectoryExported.replace("\\\\192.168.75.251","D:\\Shares"),
+                        "registration":adminDirectoryRegistration.replace("\\\\192.168.75.251","D:\\Shares"),
                         "perception":{
-                            "LDT":adminDirectoryPerceptionLDT.replace("\\\\192.168.75.252","D:\\Shares"),
-                            "SF":adminDirectoryPerceptionSF.replace("\\\\192.168.75.252","D:\\Shares"),
-                            "recognition":adminDirectoryPerceptionRecognition.replace("\\\\192.168.75.252","D:\\Shares")            
+                            "LDT":adminDirectoryPerceptionLDT.replace("\\\\192.168.75.251","D:\\Shares"),
+                            "SF":adminDirectoryPerceptionSF.replace("\\\\192.168.75.251","D:\\Shares"),
+                            "recognition":adminDirectoryPerceptionRecognition.replace("\\\\192.168.75.251","D:\\Shares")            
                         },
                         "decision":{
-                            "maneuver": adminDirectoryDecisionManeuver.replace("\\\\192.168.75.252","D:\\Shares")      
+                            "maneuver": adminDirectoryDecisionManeuver.replace("\\\\192.168.75.251","D:\\Shares")      
                         }
                     }
                 #####
@@ -492,7 +383,7 @@ class MakeJson():
                 sceneryEvent = get_scenery_event(curveFlag , sceneryEvent)
                 sceneryRoadName = self.GetRoadName(registrationFileRoad,num)
                 # maneuverFile = self.manDir + '\\' + "Maneuver_" + self.type + '_' +self.date + '_' +fnum + '.xlsx' ################### 여기 는 나중에 바뀔 내용
-                maneuverFile = os.getcwd() + '\\Output_xlsx\\'+self.type +'_' + self.date+'\\Annotation_RG3_'+self.date+'_' + fnum +'.xlsx'
+                maneuverFile = os.getcwd() + '\\Output_xlsx\\'+self.type +'_' + self.date+'\\Annotation_'+self.type+'_'+self.date+'_' + fnum +'.xlsx'
                 try:
                     maneuverLabel = pd.read_excel(maneuverFile, sheet_name = 'Label')
                 except:
@@ -760,15 +651,15 @@ class MakeJson():
                 adminAnnotationType = 'auto'
                 #####
                 directory = {
-                        "raw":  rawDataDir.replace("\\\\192.168.75.252","D:\\Shares"),
-                        "exported": adminDirectoryExported.replace("\\\\192.168.75.252","D:\\Shares"),
+                        "raw":  rawDataDir.replace("\\\\192.168.75.251","D:\\Shares"),
+                        "exported": adminDirectoryExported.replace("\\\\192.168.75.251","D:\\Shares"),
                         "perception":{
-                            "LDT":adminDirectoryPerceptionLDT.replace("\\\\192.168.75.252","D:\\Shares"),
-                            "SF":adminDirectoryPerceptionSF.replace("\\\\192.168.75.252","D:\\Shares"),
-                            "recognition":adminDirectoryPerceptionRecognition.replace("\\\\192.168.75.252","D:\\Shares")            
+                            "LDT":adminDirectoryPerceptionLDT.replace("\\\\192.168.75.251","D:\\Shares"),
+                            "SF":adminDirectoryPerceptionSF.replace("\\\\192.168.75.251","D:\\Shares"),
+                            "recognition":adminDirectoryPerceptionRecognition.replace("\\\\192.168.75.251","D:\\Shares")            
                         },
                         "decision":{
-                            "maneuver": adminDirectoryDecisionManeuver.replace("\\\\192.168.75.252","D:\\Shares")      
+                            "maneuver": adminDirectoryDecisionManeuver.replace("\\\\192.168.75.251","D:\\Shares")      
                         }
                     }
                 #####
@@ -1031,9 +922,9 @@ class MakeJson():
         return CHECKAUTO
         
     # def CheckType(self):
-    #     if self.matDir.split('\\\\192.168.75.252')[1][5] == 'G':
+    #     if self.matDir.split('\\\\192.168.75.251')[1][5] == 'G':
     #         return 'RG3'
-    #     elif self.matDir.split('\\\\192.168.75.252')[1][5] == 'A':
+    #     elif self.matDir.split('\\\\192.168.75.251')[1][5] == 'A':
     #         return 'CN7'
     #     else:
     #         raise Exception("부적절한 경로 입력입니다.")
@@ -1168,9 +1059,8 @@ class MakeJson():
                 admin_georeference_coordinates = [0,0]      
         
         elif TYPE == 'CN7':
-
-            gnss_filter_positionlla_vector =pd.DataFrame(np.array(Mat['GNSS']['Filter_Positionlla_Vector']))
             try:
+                gnss_filter_positionlla_vector =pd.DataFrame(np.array(Mat['GNSS']['Filter_Positionlla_Vector']))
                 admin_georeference_coordinates=[round(float(gnss_filter_positionlla_vector[0].loc[0]['X'][0]),8),round(float(gnss_filter_positionlla_vector[0].loc[0]['Y'][0] ),8)]
             except:
                 GPS_STATUS = 1
@@ -1187,8 +1077,8 @@ class MakeJson():
                 admin_travelDistance = 0
         
         elif TYPE == 'CN7':
-            chassis_data = pd.DataFrame(Mat['Chassis'])
-            chassis_data['mean_spd'] = (chassis_data['LOG_BYTE0_WHLSPDRL'] + chassis_data['LOG_BYTE0_WHLSPDRR'])/2
+            chassis_data = pd.DataFrame(columns=['mean_spd'])
+            chassis_data['mean_spd'] = (Mat['Chassis']['LOG_BYTE0_WHLSPDRL'][0,:] + Mat['Chassis']['LOG_BYTE0_WHLSPDRR'][0,:])/2
             try:
                 admin_travelDistance = round((chassis_data['mean_spd'].sum()/3600)*admin_sampleTime,8)
             except:
@@ -1219,7 +1109,7 @@ class MakeJson():
         
         elif TYPE == "CN7" :
             try:
-                FR_CMR_Ln_LftDptDstVal = Mat['Mobileye_Lane']['ME_Left_Lane_A_QualityLhME']
+                FR_CMR_Ln_LftDptDstVal = Mat['Mobileye_Lane']['ME_Left_Lane_A_QualityLhME'][0,:]
 
             except:
                 MOBILEYE_STATUS =1
@@ -1227,12 +1117,12 @@ class MakeJson():
                 curvature=0
                 return lane_width, curvature ,  MOBILEYE_STATUS
             
-            FR_CMR_Ln_LftDptDstVal = Mat['Mobileye_Lane']['ME_Left_Lane_A_QualityLhME']
-            FR_CMR_Ln_LftCurveVal = Mat['Mobileye_Lane']['ME_Right_Lane_A_QualityRhME']
-            FR_CMR_Ln_QualLvlLft01Sta = Mat['Mobileye_Lane']['ME_Left_Lane_A_LaneMarkPositionC0LhME']
-            FR_CMR_Ln_QualLvlRt01Sta = Mat['Mobileye_Lane']['ME_Right_Lane_A_LaneMarkPositionC0RhME']
-            FR_CMR_Ln_RtDptDstVal = Mat['Mobileye_Lane']['ME_Left_Lane_A_LaneMarkModelAC2LhME']
-            FR_CMR_Ln_RtCurveVal = Mat['Mobileye_Lane']['ME_Right_Lane_A_LaneMarkModelAC2RhME']
+            FR_CMR_Ln_LftDptDstVal = Mat['Mobileye_Lane']['ME_Left_Lane_A_QualityLhME'][0,:]
+            FR_CMR_Ln_LftCurveVal = Mat['Mobileye_Lane']['ME_Right_Lane_A_QualityRhME'][0,:]
+            FR_CMR_Ln_QualLvlLft01Sta = Mat['Mobileye_Lane']['ME_Left_Lane_A_LaneMarkPositionC0LhME'][0,:]
+            FR_CMR_Ln_QualLvlRt01Sta = Mat['Mobileye_Lane']['ME_Right_Lane_A_LaneMarkPositionC0RhME'][0,:]
+            FR_CMR_Ln_RtDptDstVal = Mat['Mobileye_Lane']['ME_Left_Lane_A_LaneMarkModelAC2LhME'][0,:]
+            FR_CMR_Ln_RtCurveVal = Mat['Mobileye_Lane']['ME_Right_Lane_A_LaneMarkModelAC2RhME'][0,:]
 
 
         for me_idx in range(np.size(FR_CMR_Ln_LftDptDstVal)):
