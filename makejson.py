@@ -10,6 +10,7 @@ v0.2 정영훈 032323 - AUTOCURATION문제 수정
 파일의 경로를 입력하고 AUTOCURATION ,GTCURATION ,RAWMODE의 모드를 선택하면 해당하는 json 파일이 생성됨
 v0.3 CN7 을 h5py 로 읽어와서 속도 개선, registration 에서 wrong 파일 읽어오도록 수정완료
 v0.4 Driver 정보 추가, 파일을 숫자로 세서 순서대로 불러오는게 아니라 리스트를 받아와서 파일명의 숫자를 읽어서 추가함
+v0.5 Registration 파일의 wrong 을 읽어서 CSS_STATUS 를 입력하도록 수정함
 '''
 
 
@@ -33,12 +34,12 @@ import h5py
 from datetime import datetime 
 
 ################################ 수정 필요 ################################
-AUTOCURATION = True # ANNOTATION 단계에서 사용하는 토글
+AUTOCURATION = False # ANNOTATION 단계에서 사용하는 토글
 GTCURATION = False # ANNOTATION 단계에서 사용하는 토글
-RAWMODE = False # Registration 단계에서 사용하는 토글
+RAWMODE = True # Registration 단계에서 사용하는 토글
 # 현재 RAWMODE에 대해서만 CN7 작업 끝남. auto, gt 진행 예정
 # matDirList = [r'\\192.168.75.251\Shares\FOT_Genesis Data_1\mat\RG3_030323',r'\\192.168.75.251\Shares\FOT_Genesis Data_1\mat\RG3_030423']
-matDirList = [r'\\192.168.75.251\Shares\FOT_Avante Data_1\Rosbag2Mat\CN7_032923']
+matDirList = [r'\\192.168.75.251\Shares\FOT_Avante Data_1\Rosbag2Mat\CN7_040623']
 # matDir = r'\\192.168.75.251\Shares\FOT_Genesis Data_1\mat\RG3_030223'
 
 # 121번 라인 숫자 수정
@@ -109,11 +110,11 @@ class MakeJson():
                 rawDataList = natsort.natsorted(glob.glob(rawDataDir + '\\*.mf4'))
             matList =  natsort.natsorted(glob.glob(self.matDir + '\\*.mat'))
             
-            man_list = os.listdir(self.manDir)
-            for _idx, _man_path in tqdm(enumerate(man_list)):
+            # man_list = os.listdir(self.manDir)
+            for _idx, _man_path in tqdm(enumerate(matList)):
                 
-                fnum = (_man_path.split("\\")[-1]).split("_")[3][:3]
-                num = int(fnum)
+                fnum = (_man_path.split("\\")[-1]).split("_")[-1][:3]
+                num = int(fnum) - 1 
                 
                 try:                    
                     mat_file_matching = [tmp_mat_path for tmp_mat_path in matList if "_" + fnum + ".mat" in tmp_mat_path][0]
@@ -154,8 +155,8 @@ class MakeJson():
                     raise Exception("Registration.xlsx가 없습니다.")
                 
                 for tmpidx in range(registrationFileWrong.shape[0]):
-                    if fnum == registrationFileWrong['dataNum'].iloc[tmpidx]:
-                        CSS_STATUS = registrationFileWrong['Description'].iloc[tmpidx]
+                    if int(fnum) == registrationFileWrong['dataNum'].iloc[tmpidx]:
+                        CSS_STATUS = str(registrationFileWrong['Description'].iloc[tmpidx])
                 
                 adminDirectoryRaw = rawDataDir + '\\' + rawDataName
                 adminDirectoryExported = self.matDir + '\\' + matName
@@ -175,11 +176,13 @@ class MakeJson():
                 adminAnnotationType = 'auto'
                 #####
                 
+
                 driver = {
                     "sex":"",
                     "age":"",
                     "experience":""
-                }                
+                }    
+
                 directory = {
                         "raw":  adminDirectoryRaw.replace("\\\\192.168.75.251\\Shares","D:\\Shares"),
                         "exported": adminDirectoryExported.replace("\\\\192.168.75.251\\Shares","D:\\Shares"),
@@ -265,7 +268,7 @@ class MakeJson():
 
                 ### Generate CSS ###
 
-                CSS_STATUS = self.CheckCSSStatus(GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS,CSS_STATUS = CSS_STATUS)
+                # CSS_STATUS = self.CheckCSSStatus(GPS_STATUS,CHASSIS_STATUS,MOBILEYE_STATUS,FRONT_RADAR_STATUS,CORNER_RADAR_STATUS,LIDAR_STATUS,ODD_STATUS,CSS_STATUS = CSS_STATUS)
                 
                 adminStatus = CSS_STATUS
                 CSS_STATUS = []        
@@ -389,8 +392,8 @@ class MakeJson():
                 raise Exception("Registration.xlsx가 없습니다.")
             
             for tmpidx in range(registrationFileWrong.shape[0]):
-                if fnum == registrationFileWrong['dataNum'].iloc[tmpidx]:
-                    CSS_STATUS = registrationFileWrong['Description'].iloc[tmpidx]
+                if int(fnum) == registrationFileWrong['dataNum'].iloc[tmpidx]:
+                    CSS_STATUS = str(registrationFileWrong['Description'].iloc[tmpidx])
 
                 
             adminDirectoryRaw = rawDataDir + '\\' + rawDataName
@@ -710,8 +713,8 @@ class MakeJson():
                     raise Exception("Registration.xlsx가 없습니다.")
                 
                 for tmpidx in range(registrationFileWrong.shape[0]):
-                    if fnum == registrationFileWrong['dataNum'].iloc[tmpidx]:
-                        CSS_STATUS = registrationFileWrong['Description'].iloc[tmpidx]
+                    if int(fnum) == registrationFileWrong['dataNum'].iloc[tmpidx]:
+                        CSS_STATUS = str(registrationFileWrong['Description'].iloc[tmpidx])
                                         
                 adminDirectoryRaw = rawDataDir + '\\' + rawDataName
                 adminDirectoryExported = self.matDir + '\\' + matName
@@ -1125,13 +1128,13 @@ class MakeJson():
             return "0B"
 
         # size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
-        i = int(math.floor(math.log(size_bytes, 1024)))
+        i = int(math.floor(math.log(size_bytes, 1000)))
         
         p = math.pow(1024, i)
         s = round(size_bytes /p, 8)
         # s = round(size_bytes / p, 10)
         # return "%s %s" % (s, size_name[i])
-        return s/1024    
+        return s    
 
     def GetGeoCoordinates(self, TYPE ,Mat):
         GPS_STATUS = 0
@@ -1425,6 +1428,10 @@ class MakeJson():
             
         return CSS_STATUS
 
+    def get_driver_info(self):
+        driver = 10
+        
+        return driver
 
 if __name__ == "__main__":
     for matDir in matDirList: 
