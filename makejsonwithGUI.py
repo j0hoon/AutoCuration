@@ -11,6 +11,8 @@ v0.2 정영훈 032323 - AUTOCURATION문제 수정
 v0.3 CN7 을 h5py 로 읽어와서 속도 개선, registration 에서 wrong 파일 읽어오도록 수정완료
 v0.4 Driver 정보 추가, 파일을 숫자로 세서 순서대로 불러오는게 아니라 리스트를 받아와서 파일명의 숫자를 읽어서 추가함
 v0.5 Registration 파일의 wrong 을 읽어서 CSS_STATUS 를 입력하도록 수정함
+
+
 '''
 
 import sys
