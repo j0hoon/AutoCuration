@@ -475,7 +475,7 @@ class MakeJson():
             FRAMESIZE,CHASSIS_STATUS = self.GetVehicleFrameSize(self.type, mat)
             try:
                 registrationFileRoad = pd.read_excel(self.rgDir +r'\Raw\Registration_' + self.type + r'_' + self.date + r'.xlsx',sheet_name = "road")
-                registrationFileWrong = pd.read_excel(self.rgDir +r'\Raw\Registration_' + self.type + r'_' + self.date + r'.xlsx',sheet_name = "road")
+                registrationFileWrong = pd.read_excel(self.rgDir +r'\Raw\Registration_' + self.type + r'_' + self.date + r'.xlsx',sheet_name = "wrong")
             except:
                 raise Exception("Registration.xlsx가 없습니다.")
             
